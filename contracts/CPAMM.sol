@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "./erc/IERC20.sol";
+
 contract CPAMM {
     IERC20 public immutable token0;
     IERC20 public immutable token1;
@@ -31,7 +33,10 @@ contract CPAMM {
         reserve1 = _reserve1;
     }
 
-    function swap(address _tokenIn, uint _amountIn) external returns (uint amountOut) {
+    function swap(
+        address _tokenIn,
+        uint _amountIn
+    ) external returns (uint amountOut) {
         require(
             _tokenIn == address(token0) || _tokenIn == address(token1),
             "invalid token"
@@ -39,9 +44,14 @@ contract CPAMM {
         require(_amountIn > 0, "amount in = 0");
 
         bool isToken0 = _tokenIn == address(token0);
-        (IERC20 tokenIn, IERC20 tokenOut, uint reserveIn, uint reserveOut) = isToken0
-            ? (token0, token1, reserve0, reserve1)
-            : (token1, token0, reserve1, reserve0);
+        (
+            IERC20 tokenIn,
+            IERC20 tokenOut,
+            uint reserveIn,
+            uint reserveOut
+        ) = isToken0
+                ? (token0, token1, reserve0, reserve1)
+                : (token1, token0, reserve1, reserve0);
 
         tokenIn.transferFrom(msg.sender, address(this), _amountIn);
 
@@ -58,14 +68,22 @@ contract CPAMM {
         */
         // 0.3% fee
         uint amountInWithFee = (_amountIn * 997) / 1000;
-        amountOut = (reserveOut * amountInWithFee) / (reserveIn + amountInWithFee);
+        amountOut =
+            (reserveOut * amountInWithFee) /
+            (reserveIn + amountInWithFee);
 
         tokenOut.transfer(msg.sender, amountOut);
 
-        _update(token0.balanceOf(address(this)), token1.balanceOf(address(this)));
+        _update(
+            token0.balanceOf(address(this)),
+            token1.balanceOf(address(this))
+        );
     }
 
-    function addLiquidity(uint _amount0, uint _amount1) external returns (uint shares) {
+    function addLiquidity(
+        uint _amount0,
+        uint _amount1
+    ) external returns (uint shares) {
         token0.transferFrom(msg.sender, address(this), _amount0);
         token1.transferFrom(msg.sender, address(this), _amount1);
 
@@ -85,7 +103,10 @@ contract CPAMM {
         dy = y / x * dx
         */
         if (reserve0 > 0 || reserve1 > 0) {
-            require(reserve0 * _amount1 == reserve1 * _amount0, "x / y != dx / dy");
+            require(
+                reserve0 * _amount1 == reserve1 * _amount0,
+                "x / y != dx / dy"
+            );
         }
 
         /*
@@ -149,7 +170,10 @@ contract CPAMM {
         require(shares > 0, "shares = 0");
         _mint(msg.sender, shares);
 
-        _update(token0.balanceOf(address(this)), token1.balanceOf(address(this)));
+        _update(
+            token0.balanceOf(address(this)),
+            token1.balanceOf(address(this))
+        );
     }
 
     function removeLiquidity(
@@ -221,25 +245,4 @@ contract CPAMM {
     function _min(uint x, uint y) private pure returns (uint) {
         return x <= y ? x : y;
     }
-}
-
-interface IERC20 {
-    function totalSupply() external view returns (uint);
-
-    function balanceOf(address account) external view returns (uint);
-
-    function transfer(address recipient, uint amount) external returns (bool);
-
-    function allowance(address owner, address spender) external view returns (uint);
-
-    function approve(address spender, uint amount) external returns (bool);
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint amount
-    ) external returns (bool);
-
-    event Transfer(address indexed from, address indexed to, uint amount);
-    event Approval(address indexed owner, address indexed spender, uint amount);
 }

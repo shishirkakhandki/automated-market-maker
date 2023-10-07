@@ -1,33 +1,40 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// You can also run a script with `npx hardhat run <script>`. If you do that, Hardhat
-// will compile your contracts, add the Hardhat Runtime Environment's members to the
-// global scope, and execute the script.
-const hre = require("hardhat");
+const { ethers } = require("hardhat");
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
+  // Deploy Token0
+  const Token0 = await ethers.deployContract("Token0", [10000]); // Replace with your Token0 contract's name
 
-  const lockedAmount = hre.ethers.parseEther("0.001");
+  await Token0.waitForDeployment();
 
-  const lock = await hre.ethers.deployContract("Lock", [unlockTime], {
-    value: lockedAmount,
-  });
+  console.log("Token0 deployed to:", await Token0.getAddress());
 
-  await lock.waitForDeployment();
+  // Deploy Token1
+  const Token1 = await ethers.deployContract("Token1", [10000]); // Replace with your Token1 contract's name
+  // const token1Instance = await Token1.deploy(10000);
 
-  console.log(
-    `Lock with ${ethers.formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.target}`
-  );
+  await Token1.waitForDeployment();
+
+  console.log("Token1 deployed to:", await Token1.getAddress());
+
+  // Use Token0 and Token1 addresses in AMM contract deployment
+  const token0Address = await Token0.getAddress();
+  const token1Address = await Token1.getAddress();
+
+  // Deploy the AMM contract
+  const AMMContract = await ethers.deployContract("CPAMM", [
+    token0Address,
+    token1Address,
+  ]); // Replace with your AMM contract's name
+  //const ammInstance = await AMMContract.deploy(token0Address, token1Address);
+
+  await AMMContract.waitForDeployment();
+
+  console.log("AMM Contract deployed to:", await AMMContract.getAddress());
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
